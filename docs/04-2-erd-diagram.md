@@ -1,17 +1,11 @@
 
-Table users { 
+Table users {
     id varchar [pk]
     password varchar [not null]
     username varchar [not null, unique] // 실제 로그인에 사용할 Id
-    name varchar // 실명
-    email varchar [unique] // 이메일
-    phone varchar // 전화번호
+    point_balance decimal(10,2) [not null, default: 0]  // 현재 포인트 잔액
     created_at timestamp [not null, default: `now()`]
     updated_at timestamp [not null, default: `now()`]
-    indexes {
-        (username)
-        (email)
-    }
 }
 
 Table categories {
@@ -32,37 +26,31 @@ Table products {
     is_active boolean [default: true]
     view_count int [default: 0]  // 조회수 (인기순 정렬용)
     sold_count int [default: 0]  // 판매량 (인기순 정렬용)
+    wishlist_count int [default: 0]  // 찜 개수
+    min_order_quantity int [default: 1]  // 1인당 최소 구매 수량
+    max_order_quantity int  // 1인당 최대 구매 수량
     created_at timestamp [not null, default: `now()`]
     updated_at timestamp [not null, default: `now()`]
     indexes {
         (category_id)
         (is_active)
         (created_at)
-    }
-}
-
-Table product_images {
-    id varchar [pk]
-    product_id varchar [ref: > products.id, not null]
-    image_url varchar [not null]
-    display_order int [default: 0] // 이미지 순서
-    is_thumbnail boolean [default: false] // 대표 이미지 여부
-    created_at timestamp [not null, default: `now()`]
-    indexes {
-        (product_id)
-        (display_order)
+        (sold_count)  // 판매량순 정렬용
+        (wishlist_count)  // 찜순 정렬용
     }
 }
 
 Table orders {
     id varchar [pk]
     user_id varchar [ref: > users.id, not null]
-    total_amount decimal(10,2) [not null]
-    discount_amount decimal(10,2) [default: 0]
-    final_amount decimal(10,2) [not null]
-    status varchar [not null, default: 'PENDING'] // PENDING, PAID, CONFIRMED, CANCELLED
+    total_amount decimal(10,2) [not null]  // 상품 금액 합계
+    discount_amount decimal(10,2) [default: 0]  // 할인 금액 (쿠폰)
+    shipping_fee decimal(10,2) [not null, default: 0]  // 배송비
+    final_amount decimal(10,2) [not null]  // 최종 결제 금액 = total_amount - discount_amount + shipping_fee - point_amount
+    status varchar [not null, default: 'PENDING'] // PENDING, PAID, CANCELLED
     coupon_id varchar [ref: > coupons.id]  // 사용된 쿠폰
     point_amount decimal(10,2) [default: 0]  // 사용된 포인트
+    is_free_shipping boolean [default: false]  // 무료배송 여부
     created_at timestamp [not null, default: `now()`]
     updated_at timestamp [not null, default: `now()`]
     paid_at timestamp
@@ -105,17 +93,8 @@ Table order_items {
     quantity int [not null]
     unit_price decimal(10,2) [not null]
     subtotal decimal(10,2) [not null] // quantity * unit_price
-    // 주문 취소
-    cancel_status varchar  // null, REQUESTED, APPROVED, REJECTED 주문 취소 단계
-    cancel_reason text  // 주문 취소 사유
-    // 반품
-    return_status varchar  // null, REQUESTED, APPROVED, REJECTED 반품 단계
-    return_reason text  // 반품 사유
-    // 환불
-    refund_status varchar  // null, REQUESTED, APPROVED, REJECTED  // 환불 단계
-    refund_reason text  // 환불 사유
-    // 구매 확정
-    is_confirmed boolean [default: false]
+    status varchar  // 주문취소(요청, 승인, 거절), 반품(요청, 배송중, 반송, 승인), 환불(요청, 진행중, 완료, 거절), 교환(요청, 승인, 거절), 구매확정(여부)
+    reason text  // 사유
     confirmed_at timestamp
     cancelled_at timestamp
     returned_at timestamp
@@ -124,7 +103,6 @@ Table order_items {
     indexes {
         (order_id)
         (product_id)
-        (is_confirmed)
     }
 }
 
@@ -147,7 +125,7 @@ Table deliveries {
     receiver_name varchar [not null]
     receiver_phone varchar [not null]
     shipping_address text [not null]
-    postal_code varchar
+    postal_code varchar  // 우편번호
     delivery_memo text  // 배송 요청사항
     // 택배 정보
     parcel_number varchar [unique] // 송장번호
@@ -198,9 +176,9 @@ Table coupons {
     usage_count int [default: 0] // 현재까지 사용된 횟수
     per_user_limit int [default: 1] // 1인당 사용 가능 횟수
     // 유효 기간
-    valid_from timestamp [not null]
-    valid_until timestamp [not null]
-    is_active boolean [default: true]
+    start_date timestamp [not null] // 시작 시점
+    end_date timestamp [not null] // 종료 시점
+    is_active boolean [default: true] // 사용 가능 여부
     created_at timestamp [not null, default: `now()`]
     indexes {
         (code)
@@ -215,7 +193,6 @@ Table user_coupons {
     status varchar [not null, default: 'AVAILABLE'] // AVAILABLE, USED, EXPIRED
     used_at timestamp  // 사용 시간
     expires_at timestamp [not null]  // 만료 시간
-    order_id varchar [ref: > orders.id]  // 사용된 주문
     issued_at timestamp [not null, default: `now()`]  // 발급 시간
     indexes {
         (user_id, coupon_id)
@@ -224,42 +201,34 @@ Table user_coupons {
     }
 }
 
-Table reviews {
+Table coupon_queues {
     id varchar [pk]
+    coupon_id varchar [ref: > coupons.id, not null]
     user_id varchar [ref: > users.id, not null]
-    product_id varchar [ref: > products.id, not null]
-    order_item_id varchar [ref: > order_items.id, unique, not null]
-    rating decimal(2,1) [not null]  // 평점 (1.0 ~ 5.0)
-    content text [not null]  // varchar → text로 변경
-    // 이미지
-    image_urls text  // JSON 배열 또는 쉼표로 구분
-    // 관리
-    is_visible boolean [default: true]  // 숨김 처리 가능
-    created_at timestamp [not null, default: `now()`]
-    updated_at timestamp [not null, default: `now()`]
+    position int [not null]  // 대기 순번
+    status varchar [not null, default: 'WAITING']  // WAITING, PROCESSING, ISSUED, FAILED (쿠폰 소진), EXPIRED(만료)
+    session_id varchar [not null]  // WebSocket 세션 관리용
+    last_heartbeat timestamp  // 연결 상태 체크
+    entered_at timestamp [not null, default: `now()`]  // 대기열 진입 시간
+    processing_started_at timestamp  // 처리 시작 시간
+    completed_at timestamp  // 완료 시간
     indexes {
-        (product_id)
-        (user_id)
-        (order_item_id)
-        (created_at)
+        (coupon_id, user_id) [unique]
+        (coupon_id, position)
+        (status)
     }
 }
 
-Table review_comments {
+Table queue_events {
     id varchar [pk]
-    user_id varchar [ref: > users.id, not null]
-    review_id varchar [ref: > reviews.id, not null]
-    parent_comment_id varchar [ref: > review_comments.id]  // 대댓글용
-    content text [not null]
-    // 판매자 댓글 구분
-    is_seller boolean [default: false]  // 판매자가 단 댓글인지
-    is_visible boolean [default: true]
+    coupon_id varchar [ref: > coupons.id, not null]
+    event_type varchar [not null]  // USER_JOINED, USER_LEFT, POSITION_UPDATED, COUPON_ISSUED, QUEUE_COMPLETED
+    user_id varchar [ref: > users.id]
+    position_change int  // 순번 변경값
+    metadata json  // 추가 데이터
     created_at timestamp [not null, default: `now()`]
-    updated_at timestamp [not null, default: `now()`]
     indexes {
-        (review_id)
-        (parent_comment_id)
-        (user_id)
-        (created_at)
+        (coupon_id, created_at)
+        (event_type)
     }
 }

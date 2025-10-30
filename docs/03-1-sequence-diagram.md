@@ -1237,7 +1237,7 @@ participant RC3 as ReviewCommentRepository
 
     A1->>RC1: DELETE /comments/{commentId}
     RC1->>RC2: deleteComment(commentId, userId)
-    
+
     RC2->>RC3: findById(commentId)
     alt 댓글이 존재하는 경우
         RC3-->>RC2: 댓글 정보
@@ -1255,3 +1255,564 @@ participant RC3 as ReviewCommentRepository
         RC2-->>RC1: CommentNotFoundException
         RC1-->>A1: 404 Not Found
     end
+
+---------- 찜하기 / 위시리스트 ----------\
+
+sequenceDiagram
+actor A1 as 클라이언트
+participant W1 as WishlistController
+participant W2 as WishlistService
+participant W3 as WishlistRepository
+participant U3 as UserRepository
+participant P3 as ProductRepository
+
+    Note over A1,P3: 1. 상품 찜하기
+    A1->>W1: POST /wishlists
+    W1->>W2: addWishlist(userId, productId)
+
+    Note over W2: 유저 확인
+    W2->>U3: findById(userId)
+    alt 유저가 존재하는 경우
+        U3-->>W2: 유저 정보
+    else 유저가 없는 경우
+        U3-->>W2: Empty
+        W2-->>W1: UserNotFoundException
+        W1-->>A1: 404 Not Found
+    end
+
+    Note over W2: 상품 확인
+    W2->>P3: findById(productId)
+    alt 상품이 존재하는 경우
+        P3-->>W2: 상품 정보
+    else 상품이 없는 경우
+        P3-->>W2: Empty
+        W2-->>W1: ProductNotFoundException
+        W1-->>A1: 404 Not Found
+    end
+
+    Note over W2: 중복 찜 확인
+    W2->>W3: findByUserIdAndProductId(userId, productId)
+    alt 이미 찜한 상품인 경우
+        W3-->>W2: 기존 찜 정보
+        W2-->>W1: WishlistAlreadyExistsException
+        W1-->>A1: 400 Bad Request (이미 찜한 상품)
+    else 찜하지 않은 상품인 경우
+        Note right of W2: Wishlist 생성
+        W2->>W3: save(wishlist)
+        W3-->>W2: 생성된 찜
+
+        Note over W2: 상품의 wishlist_count 증가
+        W2->>P3: incrementWishlistCount(productId)
+        P3-->>W2: wishlist_count += 1
+
+        W2-->>W1: 찜 정보
+        W1-->>A1: 201 Created<br/>{wishlistId, productId, addedAt}
+    end
+
+    Note over A1,P3: 2. 찜 목록 조회
+    A1->>W1: GET /users/{userId}/wishlists?page=1&size=20
+    W1->>W2: getWishlists(userId, PageRequest)
+    W2->>W3: findByUserId(userId, Pageable)
+    W3-->>W2: Page<Wishlist> (20개)
+
+    loop 각 찜마다
+        W2->>P3: findById(productId)
+        P3-->>W2: 상품 정보 (name, price, stock, thumbnailUrl, saleStatus)
+    end
+
+    W2-->>W1: 찜 목록 + 페이징 정보
+    W1-->>A1: 200 OK<br/>{wishlists[], page, totalPages}
+
+    Note over A1,P3: 3. 찜 삭제
+    A1->>W1: DELETE /wishlists/{wishlistId}
+    W1->>W2: deleteWishlist(wishlistId, userId)
+
+    W2->>W3: findById(wishlistId)
+    alt 찜이 존재하는 경우
+        W3-->>W2: 찜 정보
+        alt 본인이 찜한 경우
+            W2->>W3: delete(wishlistId)
+            W3-->>W2: 삭제 완료
+
+            Note over W2: 상품의 wishlist_count 감소
+            W2->>P3: decrementWishlistCount(productId)
+            P3-->>W2: wishlist_count -= 1
+
+            W2-->>W1: 삭제 성공
+            W1-->>A1: 204 No Content
+        else 본인이 찜한 것이 아닌 경우
+            W2-->>W1: UnauthorizedException
+            W1-->>A1: 403 Forbidden
+        end
+    else 찜이 없는 경우
+        W3-->>W2: Empty
+        W2-->>W1: WishlistNotFoundException
+        W1-->>A1: 404 Not Found
+    end
+
+    Note over A1,P3: 4. 찜 여부 확인
+    A1->>W1: GET /wishlists/check?userId={userId}&productId={productId}
+    W1->>W2: checkWishlist(userId, productId)
+    W2->>W3: findByUserIdAndProductId(userId, productId)
+    alt 찜한 상품인 경우
+        W3-->>W2: 찜 정보
+        W2-->>W1: 찜 정보
+        W1-->>A1: 200 OK<br/>{isWishlisted: true, wishlistId}
+    else 찜하지 않은 상품인 경우
+        W3-->>W2: Empty
+        W2-->>W1: 찜 안 함
+        W1-->>A1: 200 OK<br/>{isWishlisted: false}
+    end
+
+---------- 상품 이미지 관리 ----------\
+
+sequenceDiagram
+actor A1 as 클라이언트
+participant PI1 as ProductImageController
+participant PI2 as ProductImageService
+participant PI3 as ProductImageRepository
+participant P3 as ProductRepository
+participant S3 as StorageService
+
+    Note over A1,S3: 1. 상품 이미지 업로드
+    A1->>PI1: POST /products/{productId}/images
+    PI1->>PI2: uploadProductImage(productId, imageFile)
+
+    Note over PI2: 상품 확인
+    PI2->>P3: findById(productId)
+    alt 상품이 존재하는 경우
+        P3-->>PI2: 상품 정보
+
+        Note over PI2: 이미지 파일 저장
+        PI2->>S3: uploadFile(imageFile)
+        S3-->>PI2: imageUrl
+
+        Note over PI2: ProductImage 생성
+        Note right of PI2: productId, imageUrl,<br/>display_order, is_thumbnail
+        PI2->>PI3: save(productImage)
+        PI3-->>PI2: 생성된 이미지 정보
+
+        PI2-->>PI1: 이미지 정보
+        PI1-->>A1: 201 Created<br/>{imageId, imageUrl, display_order}
+    else 상품이 없는 경우
+        P3-->>PI2: Empty
+        PI2-->>PI1: ProductNotFoundException
+        PI1-->>A1: 404 Not Found
+    end
+
+    Note over A1,S3: 2. 상품 이미지 조회
+    A1->>PI1: GET /products/{productId}/images
+    PI1->>PI2: getProductImages(productId)
+    PI2->>PI3: findByProductIdOrderByDisplayOrder(productId)
+    PI3-->>PI2: 이미지 목록
+    PI2-->>PI1: 이미지 목록
+    PI1-->>A1: 200 OK<br/>{images[]}
+
+    Note over A1,S3: 3. 상품 이미지 삭제
+    A1->>PI1: DELETE /products/images/{imageId}
+    PI1->>PI2: deleteProductImage(imageId)
+
+    PI2->>PI3: findById(imageId)
+    alt 이미지가 존재하는 경우
+        PI3-->>PI2: 이미지 정보
+
+        Note over PI2: 파일 삭제
+        PI2->>S3: deleteFile(imageUrl)
+        S3-->>PI2: 삭제 완료
+
+        PI2->>PI3: delete(imageId)
+        PI3-->>PI2: 삭제 완료
+
+        PI2-->>PI1: 삭제 성공
+        PI1-->>A1: 204 No Content
+    else 이미지가 없는 경우
+        PI3-->>PI2: Empty
+        PI2-->>PI1: ImageNotFoundException
+        PI1-->>A1: 404 Not Found
+    end
+
+---------- 배송 정책 조회 ----------\
+
+sequenceDiagram
+actor A1 as 클라이언트
+participant SP1 as ShippingPolicyController
+participant SP2 as ShippingPolicyService
+participant SP3 as ShippingPolicyRepository
+
+    Note over A1,SP3: 1. 배송 정책 전체 조회
+    A1->>SP1: GET /shipping-policies
+    SP1->>SP2: getAllShippingPolicies()
+    SP2->>SP3: findByIsActiveTrue()
+    SP3-->>SP2: 활성 배송 정책 목록
+    SP2-->>SP1: 배송 정책 목록
+    SP1-->>A1: 200 OK<br/>{policies[]}
+
+    Note over A1,SP3: 2. 지역별 배송 정책 조회
+    A1->>SP1: GET /shipping-policies/region?type=JEJU
+    SP1->>SP2: getShippingPolicyByRegion(JEJU)
+    SP2->>SP3: findByRegionTypeAndIsActiveTrue(JEJU)
+    SP3-->>SP2: 제주 배송 정책
+    SP2-->>SP1: 배송 정책 정보
+    SP1-->>A1: 200 OK<br/>{policy}
+
+    Note over A1,SP3: 3. 배송비 계산
+    A1->>SP1: POST /shipping-policies/calculate-fee
+    Note right of SP1: Request: {totalPrice, zipCode}
+    SP1->>SP2: calculateShippingFee(totalPrice, zipCode)
+
+    Note over SP2: 우편번호로 지역 타입 판별
+    Note right of SP2: zipCode → regionType<br/>(STANDARD, JEJU, REMOTE)
+
+    SP2->>SP3: findByRegionTypeAndIsActiveTrue(regionType)
+    SP3-->>SP2: 배송 정책
+
+    Note over SP2: 배송비 계산
+    alt totalPrice >= free_shipping_threshold
+        Note right of SP2: shipping_fee = 0<br/>is_free_shipping = true
+    else totalPrice < threshold
+        Note right of SP2: shipping_fee = default_fee + additional_fee<br/>is_free_shipping = false
+    end
+
+    SP2-->>SP1: 배송비 정보
+    SP1-->>A1: 200 OK<br/>{shipping_fee, is_free_shipping}
+
+---------- 개선된 주문 / 결제 (배송비 + payments 테이블) ----------\
+
+sequenceDiagram
+actor A1 as 클라이언트
+participant O1 as OrderController
+participant O2 as OrderService
+participant O3 as OrderRepository
+participant OI3 as OrderItemRepository
+participant D3 as DeliveryRepository
+participant SP3 as ShippingPolicyRepository
+participant Pay3 as PaymentRepository
+participant U3 as UserRepository
+participant P3 as ProductRepository
+participant Po3 as PointRepository
+participant C3 as CouponRepository
+participant PayAPI as PaymentService
+
+    A1->>O1: POST /orders
+    Note right of A1: {userId, items[], deliveryInfo, usePoint, couponId}
+    O1->>O2: createOrder(orderDto)
+
+    Note over O2: 1. 유저 확인
+    O2->>U3: findById(userId)
+    U3-->>O2: 유저 정보
+
+    Note over O2: 2. 배송지 정보 검증
+    Note right of O2: receiver_name, receiver_phone,<br/>shipping_address, postal_code, delivery_memo
+
+    Note over O2: 3. 상품 및 재고 확인
+    loop 각 주문 상품마다
+        O2->>P3: findById(productId)
+        P3-->>O2: 상품 정보
+        Note right of O2: 재고 확인: stock >= quantity
+    end
+
+    Note over O2: 4. 배송비 계산
+    Note right of O2: zipCode로 지역 타입 판별
+    O2->>SP3: findByRegionTypeAndIsActiveTrue(regionType)
+    SP3-->>O2: 배송 정책
+    Note right of O2: subtotal = Σ(상품가격 × 수량)
+    alt subtotal >= free_shipping_threshold
+        Note right of O2: shipping_fee = 0<br/>is_free_shipping = true
+    else subtotal < threshold
+        Note right of O2: shipping_fee = default_fee + additional_fee<br/>is_free_shipping = false
+    end
+    Note right of O2: total_amount = subtotal + shipping_fee
+
+    Note over O2: 5. 포인트 차감
+    alt 포인트 사용 시
+        O2->>Po3: findByUserId(userId)
+        Po3-->>O2: 포인트 정보
+        Note right of O2: total_amount -= point_amount
+        O2->>Po3: save(차감된 포인트)
+    end
+
+    Note over O2: 6. 쿠폰 적용
+    alt 쿠폰 사용 시
+        O2->>C3: findById(couponId)
+        C3-->>O2: 쿠폰 정보
+        Note right of O2: discount 계산 (정률/정량)<br/>final_amount = total_amount - discount_amount
+    else 쿠폰 미사용
+        Note right of O2: final_amount = total_amount
+    end
+
+    Note over O2: 7. 재고 차감
+    loop 각 주문 상품마다
+        O2->>P3: save(stock -= quantity)
+    end
+
+    Note over O2: 8. 주문 생성
+    Note right of O2: order 생성 (status: PENDING)<br/>total_amount, discount_amount,<br/>shipping_fee, point_amount, final_amount
+    O2->>O3: save(order)
+    O3-->>O2: orderId
+
+    Note over O2: 9. 주문 아이템 생성
+    loop 각 상품마다
+        O2->>OI3: save(orderItem)
+    end
+
+    Note over O2: 10. 배송 정보 생성
+    Note right of O2: delivery 생성 (status: READY)<br/>receiver_name, shipping_address, etc.
+    O2->>D3: save(delivery)
+    D3-->>O2: deliveryId
+
+    O2-->>O1: 주문 정보
+    O1-->>A1: 201 Created<br/>{orderId, final_amount, shipping_fee, status: PENDING}
+
+    Note over A1,PayAPI: 결제 처리
+    A1->>O1: POST /orders/{orderId}/payment
+    Note right of A1: {paymentMethod}
+    O1->>O2: processPayment(orderId, paymentDto)
+
+    O2->>O3: findById(orderId)
+    O3-->>O2: 주문 정보
+
+    Note over O2: payments 테이블에 PENDING 상태로 저장
+    Note right of O2: payment 생성<br/>order_id, amount, payment_method,<br/>payment_status: PENDING
+    O2->>Pay3: save(payment - PENDING)
+    Pay3-->>O2: paymentId
+
+    Note over O2: 결제 요청
+    O2->>PayAPI: requestPayment(final_amount, paymentMethod)
+    alt 결제 성공
+        PayAPI-->>O2: 결제 성공 (transactionId, pgProvider)
+
+        Note over O2: payments 테이블 업데이트
+        Note right of O2: payment_status: COMPLETED<br/>transaction_id, pg_provider
+        O2->>Pay3: save(payment - COMPLETED)
+        Pay3-->>O2: 결제 정보 저장 완료
+
+        Note over O2: 주문 상태 업데이트
+        Note right of O2: status: PENDING → PAID<br/>paid_at: timestamp
+        O2->>O3: save(paidOrder)
+        O3-->>O2: 주문 확정
+
+        O2-->>O1: 결제 성공
+        O1-->>A1: 200 OK<br/>{paymentId, transactionId, status: PAID}
+    else 결제 실패
+        PayAPI-->>O2: 결제 실패 (failureReason)
+
+        Note over O2: payments 테이블 업데이트
+        Note right of O2: payment_status: FAILED<br/>failure_reason
+        O2->>Pay3: save(payment - FAILED)
+        Pay3-->>O2: 실패 기록 저장
+
+        Note over O2: 재고 복구
+        loop 각 주문 아이템마다
+            O2->>P3: save(stock += quantity)
+        end
+
+        Note over O2: 포인트 복구
+        alt 포인트 사용했었다면
+            O2->>Po3: save(restoredPoint)
+        end
+
+        Note over O2: 주문 상태 업데이트
+        Note right of O2: status: FAILED<br/>failed_at: timestamp
+        O2->>O3: save(failedOrder)
+
+        O2-->>O1: 결제 실패
+        O1-->>A1: 400 Bad Request<br/>{status: FAILED, reason}
+    end
+
+---------- 주문 취소 ----------\
+
+sequenceDiagram
+actor A1 as 클라이언트
+participant O1 as OrderController
+participant O2 as OrderService
+participant O3 as OrderRepository
+participant OI3 as OrderItemRepository
+participant P3 as ProductRepository
+participant Po3 as PointRepository
+participant Pay3 as PaymentRepository
+participant PayAPI as PaymentService
+
+    A1->>O1: POST /orders/{orderId}/cancel
+    Note right of A1: {userId, reason}
+    O1->>O2: cancelOrder(orderId, userId, reason)
+
+    Note over O2: 1. 주문 확인
+    O2->>O3: findById(orderId)
+    O3-->>O2: 주문 정보
+
+    Note over O2: 2. 본인 주문 확인
+    alt 본인 주문이 아닌 경우
+        O2-->>O1: UnauthorizedException
+        O1-->>A1: 403 Forbidden
+    end
+
+    Note over O2: 3. 취소 가능 상태 확인
+    alt 배송 시작 후 (SHIPPING, DELIVERED)
+        O2-->>O1: OrderCannotBeCancelledException
+        O1-->>A1: 400 Bad Request<br/>(배송 시작 후 취소 불가)
+    end
+
+    Note over O2: 4. 결제 정보 조회
+    O2->>Pay3: findByOrderId(orderId)
+    Pay3-->>O2: 결제 정보
+
+    Note over O2: 5. 환불 처리 (결제 완료된 경우)
+    alt 결제 완료된 주문 (PAID)
+        O2->>PayAPI: requestRefund(transactionId, amount)
+        PayAPI-->>O2: 환불 성공 (refundTransactionId)
+
+        Note over O2: payments 테이블에 환불 기록 저장
+        Note right of O2: payment_type: REFUND<br/>payment_status: COMPLETED<br/>transaction_id: refundTransactionId
+        O2->>Pay3: save(refundPayment)
+        Pay3-->>O2: 환불 기록 저장
+    end
+
+    Note over O2: 6. 재고 복구
+    O2->>OI3: findByOrderId(orderId)
+    OI3-->>O2: 주문 아이템 목록
+    loop 각 주문 아이템마다
+        O2->>P3: save(stock += quantity)
+    end
+
+    Note over O2: 7. 포인트 복구
+    alt 포인트 사용한 경우
+        O2->>Po3: save(point += point_amount)
+    end
+
+    Note over O2: 8. 주문 아이템 상태 업데이트
+    loop 각 주문 아이템마다
+        Note right of O2: status: CANCELLED<br/>cancelled_at: timestamp<br/>reason
+        O2->>OI3: save(cancelledOrderItem)
+    end
+
+    Note over O2: 9. 주문 상태 업데이트
+    Note right of O2: status: CANCELLED<br/>cancelled_at: timestamp
+    O2->>O3: save(cancelledOrder)
+    O3-->>O2: 취소 완료
+
+    O2-->>O1: 취소 성공
+    O1-->>A1: 200 OK<br/>{status: CANCELLED, refundedAmount, refundedPoint}
+
+---------- 부분 주문 취소 (주문 아이템 단위) ----------\
+
+sequenceDiagram
+actor A1 as 클라이언트
+participant O1 as OrderController
+participant O2 as OrderService
+participant O3 as OrderRepository
+participant OI3 as OrderItemRepository
+participant P3 as ProductRepository
+participant Po3 as PointRepository
+participant Pay3 as PaymentRepository
+participant PayAPI as PaymentService
+
+    A1->>O1: POST /orders/{orderId}/items/{itemId}/cancel
+    Note right of A1: {userId, reason}
+    O1->>O2: cancelOrderItem(orderId, itemId, userId, reason)
+
+    Note over O2: 1. 주문 아이템 확인
+    O2->>OI3: findById(itemId)
+    OI3-->>O2: 주문 아이템 정보
+
+    Note over O2: 2. 주문 확인
+    O2->>O3: findById(orderId)
+    O3-->>O2: 주문 정보
+    Note right of O2: 본인 주문인지 확인
+
+    Note over O2: 3. 취소 가능 상태 확인
+    alt 배송 시작 후
+        O2-->>O1: OrderItemCannotBeCancelledException
+        O1-->>A1: 400 Bad Request
+    end
+
+    Note over O2: 4. 부분 환불 금액 계산
+    Note right of O2: 비율 계산: item_subtotal / total_amount<br/>refund_amount = (final_amount × 비율)
+
+    Note over O2: 5. 부분 환불 처리
+    O2->>Pay3: findByOrderId(orderId)
+    Pay3-->>O2: 결제 정보
+    O2->>PayAPI: requestRefund(transactionId, refund_amount)
+    PayAPI-->>O2: 환불 성공
+
+    Note over O2: payments 테이블에 부분 환불 기록
+    O2->>Pay3: save(refundPayment)
+
+    Note over O2: 6. 재고 복구 (해당 아이템만)
+    O2->>P3: save(stock += quantity)
+
+    Note over O2: 7. 주문 아이템 상태 업데이트
+    Note right of O2: status: CANCELLED<br/>cancelled_at, reason
+    O2->>OI3: save(cancelledItem)
+    OI3-->>O2: 취소 완료
+
+    Note over O2: 8. 주문 금액 재계산
+    Note right of O2: final_amount -= refund_amount
+    O2->>O3: save(updatedOrder)
+
+    O2-->>O1: 부분 취소 성공
+    O1-->>A1: 200 OK<br/>{itemStatus: CANCELLED, refundedAmount}
+
+---------- 반품 처리 ----------\
+
+sequenceDiagram
+actor A1 as 클라이언트
+participant O1 as OrderController
+participant O2 as OrderService
+participant OI3 as OrderItemRepository
+participant P3 as ProductRepository
+participant D3 as DeliveryRepository
+participant Pay3 as PaymentRepository
+participant PayAPI as PaymentService
+
+    A1->>O1: POST /orders/{orderId}/items/{itemId}/return
+    Note right of A1: {userId, reason}
+    O1->>O2: requestReturn(orderId, itemId, userId, reason)
+
+    Note over O2: 1. 주문 아이템 확인
+    O2->>OI3: findById(itemId)
+    OI3-->>O2: 주문 아이템 정보
+
+    Note over O2: 2. 반품 가능 조건 확인
+    O2->>D3: findByOrderItemId(itemId)
+    D3-->>O2: 배송 정보
+    alt 배송 완료되지 않은 경우
+        O2-->>O1: ReturnNotAvailableException
+        O1-->>A1: 400 Bad Request<br/>(배송 완료 후 반품 가능)
+    end
+    alt 반품 가능 기간 초과 (예: 7일)
+        O2-->>O1: ReturnPeriodExpiredException
+        O1-->>A1: 400 Bad Request<br/>(반품 기간 초과)
+    end
+
+    Note over O2: 3. 주문 아이템 상태 업데이트
+    Note right of O2: status: RETURN_REQUESTED<br/>reason, requested_at
+    O2->>OI3: save(returnRequestedItem)
+    OI3-->>O2: 반품 요청 접수
+
+    O2-->>O1: 반품 요청 성공
+    O1-->>A1: 200 OK<br/>{status: RETURN_REQUESTED}
+
+    Note over O2: 4. 관리자 반품 승인
+    Note right of O2: Admin이 반품 승인
+    O2->>OI3: findById(itemId)
+    OI3-->>O2: 주문 아이템
+    Note right of O2: status: RETURNED<br/>returned_at
+    O2->>OI3: save(returnedItem)
+
+    Note over O2: 5. 재고 복구
+    O2->>P3: save(stock += quantity)
+
+    Note over O2: 6. 환불 처리
+    Note right of O2: 반품 금액 계산
+    O2->>Pay3: findByOrderId(orderId)
+    Pay3-->>O2: 결제 정보
+    O2->>PayAPI: requestRefund(transactionId, amount)
+    PayAPI-->>O2: 환불 성공
+
+    Note over O2: payments 테이블에 환불 기록
+    Note right of O2: payment_type: REFUND<br/>reason: RETURN
+    O2->>Pay3: save(refundPayment)
+
+    Note over O2: 7. 주문 아이템 최종 상태
+    Note right of O2: status: REFUNDED<br/>refunded_at
+    O2->>OI3: save(refundedItem)

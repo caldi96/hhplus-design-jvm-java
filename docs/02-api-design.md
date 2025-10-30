@@ -231,6 +231,45 @@ PATCH /api/products/{id}/sale-status
 **Error Response:**
 - `404 Not Found`: 상품을 찾을 수 없음
 
+### 1.10 상품 검색
+```
+GET /api/products/search
+```
+
+**Query Parameters:**
+- `keyword`: string (required) - 검색어 (상품명, 카테고리명)
+- `categoryId`: string (optional) - 카테고리 필터
+- `minPrice`: number (optional) - 최소 가격
+- `maxPrice`: number (optional) - 최대 가격
+- `page`: number (optional, default: 1)
+- `size`: number (optional, default: 20)
+- `sort`: "latest" | "price_low" | "price_high" | "orderCount" | "rating" (optional)
+
+**Response (200 OK):**
+```json
+{
+  "products": [
+    {
+      "productId": "string",
+      "name": "string",
+      "price": number,
+      "stock": number,
+      "category": {
+        "categoryId": "string",
+        "name": "string"
+      },
+      "rating": number,
+      "orderCount": number,
+      "thumbnailUrl": "string"
+    }
+  ],
+  "keyword": "string",
+  "page": number,
+  "totalPages": number,
+  "totalElements": number
+}
+```
+
 ---
 
 ## 2. 카테고리 (Category)
@@ -367,9 +406,155 @@ GET /api/categories/{categoryId}/products
 
 ---
 
-## 3. 주문 / 결제 (Order / Payment)
+## 3. 찜하기 / 위시리스트 (Wishlist)
 
-### 3.1 주문 생성
+### 3.1 상품 찜하기
+```
+POST /api/wishlists
+```
+
+**Request Body:**
+```json
+{
+  "userId": "string",
+  "productId": "string"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "wishlistId": "string",
+  "productId": "string",
+  "addedAt": "datetime"
+}
+```
+
+**Error Response:**
+- `404 Not Found`: 유저 또는 상품을 찾을 수 없음
+- `400 Bad Request`: 이미 찜한 상품
+
+### 3.2 찜 목록 조회
+```
+GET /api/users/{userId}/wishlists
+```
+
+**Query Parameters:**
+- `page`: number (optional, default: 1)
+- `size`: number (optional, default: 20)
+- `sort`: "latest" | "oldest" (optional, default: "latest")
+
+**Response (200 OK):**
+```json
+{
+  "wishlists": [
+    {
+      "wishlistId": "string",
+      "product": {
+        "productId": "string",
+        "name": "string",
+        "price": number,
+        "stock": number,
+        "thumbnailUrl": "string",
+        "saleStatus": "ON_SALE" | "SOLD_OUT" | "DISCONTINUED"
+      },
+      "addedAt": "datetime"
+    }
+  ],
+  "page": number,
+  "totalPages": number,
+  "totalElements": number
+}
+```
+
+### 3.3 찜 삭제
+```
+DELETE /api/wishlists/{wishlistId}
+```
+
+**Query Parameters:**
+- `userId`: string
+
+**Response:**
+- `204 No Content`: 삭제 성공
+
+**Error Response:**
+- `404 Not Found`: 찜을 찾을 수 없음
+- `403 Forbidden`: 본인 찜이 아님
+
+### 3.4 상품 찜 여부 확인
+```
+GET /api/wishlists/check
+```
+
+**Query Parameters:**
+- `userId`: string
+- `productId`: string
+
+**Response (200 OK):**
+```json
+{
+  "isWishlisted": boolean,
+  "wishlistId": "string"
+}
+```
+
+---
+
+## 4. 최근 본 상품 (Recent Products)
+
+### 4.1 최근 본 상품 조회
+```
+GET /api/users/{userId}/recent-products
+```
+
+**Query Parameters:**
+- `limit`: number (optional, default: 20, max: 50)
+
+**Response (200 OK):**
+```json
+{
+  "products": [
+    {
+      "productId": "string",
+      "name": "string",
+      "price": number,
+      "stock": number,
+      "thumbnailUrl": "string",
+      "viewedAt": "datetime"
+    }
+  ]
+}
+```
+
+### 4.2 최근 본 상품 추가
+```
+POST /api/users/{userId}/recent-products
+```
+
+**Request Body:**
+```json
+{
+  "productId": "string"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "productId": "string",
+  "viewedAt": "datetime"
+}
+```
+
+**Error Response:**
+- `404 Not Found`: 상품을 찾을 수 없음
+
+---
+
+## 5. 주문 / 결제 (Order / Payment)
+
+### 5.1 주문 생성
 ```
 POST /api/orders
 ```
