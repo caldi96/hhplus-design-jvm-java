@@ -1,0 +1,641 @@
+# Mock API 서버 설계
+
+## 개요
+JSON Server를 활용한 Mock API 서버 구현을 위한 데이터 설계입니다.
+
+## db.json
+
+```json
+{
+  "users": [
+    {
+      "id": "user001",
+      "password": "password123",
+      "username": "testuser1",
+      "name": "홍길동",
+      "point_balance": 50000.00,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "user002",
+      "password": "password123",
+      "username": "testuser2",
+      "name": "김철수",
+      "point_balance": 100000.00,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat001",
+      "category_name": "전자기기",
+      "display_order": 1,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "cat002",
+      "category_name": "컴퓨터/주변기기",
+      "display_order": 2,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "cat003",
+      "category_name": "생활용품",
+      "display_order": 3,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    }
+  ],
+  "products": [
+    {
+      "id": "prod001",
+      "name": "삼성 갤럭시북 프로",
+      "description": "최신형 노트북",
+      "price": 1890000.00,
+      "stock": 10,
+      "category_id": "cat001",
+      "is_active": true,
+      "view_count": 150,
+      "sold_count": 25,
+      "wishlist_count": 45,
+      "min_order_quantity": 1,
+      "max_order_quantity": 3,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "prod002",
+      "name": "로지텍 게이밍 키보드",
+      "description": "기계식 키보드, RGB 백라이트",
+      "price": 120000.00,
+      "stock": 50,
+      "category_id": "cat002",
+      "is_active": true,
+      "view_count": 200,
+      "sold_count": 80,
+      "wishlist_count": 30,
+      "min_order_quantity": 1,
+      "max_order_quantity": 5,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "prod003",
+      "name": "LG 무선 청소기",
+      "description": "강력한 흡입력",
+      "price": 45000.00,
+      "stock": 100,
+      "category_id": "cat002",
+      "is_active": true,
+      "view_count": 180,
+      "sold_count": 120,
+      "wishlist_count": 20,
+      "min_order_quantity": 1,
+      "max_order_quantity": 10,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "prod004",
+      "name": "스테인리스 텀블러",
+      "description": "보온보냉 가능",
+      "price": 29900.00,
+      "stock": 200,
+      "category_id": "cat003",
+      "is_active": true,
+      "view_count": 500,
+      "sold_count": 350,
+      "wishlist_count": 80,
+      "min_order_quantity": 1,
+      "max_order_quantity": 10,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "prod005",
+      "name": "한정판 굿즈 - 특별 에디션",
+      "description": "인기 아이돌 한정판 굿즈",
+      "price": 15000.00,
+      "stock": 5,
+      "category_id": "cat003",
+      "is_active": true,
+      "view_count": 1000,
+      "sold_count": 995,
+      "wishlist_count": 500,
+      "min_order_quantity": 1,
+      "max_order_quantity": 2,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    }
+  ],
+  "product_images": [
+    {
+      "id": "img001",
+      "product_id": "prod001",
+      "image_url": "https://example.com/images/laptop1.jpg",
+      "display_order": 1,
+      "is_thumbnail": true,
+      "created_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "img002",
+      "product_id": "prod001",
+      "image_url": "https://example.com/images/laptop2.jpg",
+      "display_order": 2,
+      "is_thumbnail": false,
+      "created_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "img003",
+      "product_id": "prod002",
+      "image_url": "https://example.com/images/keyboard1.jpg",
+      "display_order": 1,
+      "is_thumbnail": true,
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  ],
+  "wishlists": [
+    {
+      "id": "wish001",
+      "user_id": "user001",
+      "product_id": "prod001",
+      "created_at": "2025-01-05T10:00:00Z"
+    },
+    {
+      "id": "wish002",
+      "user_id": "user001",
+      "product_id": "prod003",
+      "created_at": "2025-01-06T14:30:00Z"
+    }
+  ],
+  "carts": [
+    {
+      "id": "cart001",
+      "user_id": "user001",
+      "product_id": "prod002",
+      "quantity": 2,
+      "created_at": "2025-01-10T09:00:00Z",
+      "updated_at": "2025-01-10T09:00:00Z"
+    },
+    {
+      "id": "cart002",
+      "user_id": "user001",
+      "product_id": "prod003",
+      "quantity": 1,
+      "created_at": "2025-01-10T09:05:00Z",
+      "updated_at": "2025-01-10T09:05:00Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "order001",
+      "user_id": "user001",
+      "total_amount": 165000.00,
+      "discount_amount": 16500.00,
+      "shipping_fee": 3000.00,
+      "point_amount": 5000.00,
+      "final_amount": 146500.00,
+      "status": "PAID",
+      "coupon_id": "coupon001",
+      "is_free_shipping": false,
+      "created_at": "2025-01-15T10:00:00Z",
+      "updated_at": "2025-01-15T10:05:00Z",
+      "paid_at": "2025-01-15T10:05:00Z",
+      "cancelled_at": null
+    },
+    {
+      "id": "order002",
+      "user_id": "user002",
+      "total_amount": 89900.00,
+      "discount_amount": 0.00,
+      "shipping_fee": 0.00,
+      "point_amount": 0.00,
+      "final_amount": 89900.00,
+      "status": "PENDING",
+      "coupon_id": null,
+      "is_free_shipping": true,
+      "created_at": "2025-01-20T14:30:00Z",
+      "updated_at": "2025-01-20T14:30:00Z",
+      "paid_at": null,
+      "cancelled_at": null
+    }
+  ],
+  "order_items": [
+    {
+      "id": "item001",
+      "product_id": "prod002",
+      "order_id": "order001",
+      "product_name": "로지텍 게이밍 키보드",
+      "quantity": 1,
+      "unit_price": 120000.00,
+      "subtotal": 120000.00,
+      "status": "CONFIRMED",
+      "reason": null,
+      "confirmed_at": "2025-01-18T10:00:00Z",
+      "cancelled_at": null,
+      "returned_at": null,
+      "refunded_at": null,
+      "created_at": "2025-01-15T10:00:00Z"
+    },
+    {
+      "id": "item002",
+      "product_id": "prod003",
+      "order_id": "order001",
+      "product_name": "LG 무선 청소기",
+      "quantity": 1,
+      "unit_price": 45000.00,
+      "subtotal": 45000.00,
+      "status": "CONFIRMED",
+      "reason": null,
+      "confirmed_at": "2025-01-18T10:00:00Z",
+      "cancelled_at": null,
+      "returned_at": null,
+      "refunded_at": null,
+      "created_at": "2025-01-15T10:00:00Z"
+    },
+    {
+      "id": "item003",
+      "product_id": "prod004",
+      "order_id": "order002",
+      "product_name": "스테인리스 텀블러",
+      "quantity": 3,
+      "unit_price": 29900.00,
+      "subtotal": 89900.00,
+      "status": "PENDING",
+      "reason": null,
+      "confirmed_at": null,
+      "cancelled_at": null,
+      "returned_at": null,
+      "refunded_at": null,
+      "created_at": "2025-01-20T14:30:00Z"
+    }
+  ],
+  "payments": [
+    {
+      "id": "pay001",
+      "order_id": "order001",
+      "amount": 146500.00,
+      "payment_type": "PAYMENT",
+      "payment_method": "CARD",
+      "payment_status": "COMPLETED",
+      "transaction_id": "TXN20250115100500",
+      "pg_provider": "토스페이먼츠",
+      "failure_reason": null,
+      "created_at": "2025-01-15T10:05:00Z",
+      "updated_at": "2025-01-15T10:05:30Z",
+      "completed_at": "2025-01-15T10:05:30Z",
+      "failed_at": null
+    }
+  ],
+  "deliveries": [
+    {
+      "id": "delivery001",
+      "order_item_id": "item001",
+      "receiver_name": "홍길동",
+      "receiver_phone": "010-1234-5678",
+      "shipping_address": "서울시 강남구 테헤란로 123",
+      "postal_code": "06234",
+      "delivery_memo": "문 앞에 놓아주세요",
+      "parcel_number": "123456789012",
+      "parcel_corp": "CJ 대한통운",
+      "delivery_status": "SHIPPED",
+      "created_at": "2025-01-15T10:00:00Z",
+      "updated_at": "2025-01-16T09:00:00Z",
+      "shipped_at": "2025-01-16T09:00:00Z",
+      "delivered_at": null
+    },
+    {
+      "id": "delivery002",
+      "order_item_id": "item002",
+      "receiver_name": "홍길동",
+      "receiver_phone": "010-1234-5678",
+      "shipping_address": "서울시 강남구 테헤란로 123",
+      "postal_code": "06234",
+      "delivery_memo": "문 앞에 놓아주세요",
+      "parcel_number": "123456789013",
+      "parcel_corp": "CJ 대한통운",
+      "delivery_status": "DELIVERED",
+      "created_at": "2025-01-15T10:00:00Z",
+      "updated_at": "2025-01-18T14:00:00Z",
+      "shipped_at": "2025-01-16T09:00:00Z",
+      "delivered_at": "2025-01-18T14:00:00Z"
+    }
+  ],
+  "coupons": [
+    {
+      "id": "coupon001",
+      "name": "10% 할인 쿠폰",
+      "code": "WELCOME2025",
+      "discount_type": "PERCENTAGE",
+      "discount_value": 10.00,
+      "max_discount_amount": 50000.00,
+      "min_order_amount": 50000.00,
+      "total_quantity": 100,
+      "issued_quantity": 45,
+      "usage_count": 30,
+      "per_user_limit": 1,
+      "start_date": "2025-01-01T00:00:00Z",
+      "end_date": "2025-12-31T23:59:59Z",
+      "is_active": true,
+      "created_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "coupon002",
+      "name": "5000원 할인 쿠폰",
+      "code": "SAVE5000",
+      "discount_type": "FIXED",
+      "discount_value": 5000.00,
+      "max_discount_amount": null,
+      "min_order_amount": 30000.00,
+      "total_quantity": 200,
+      "issued_quantity": 150,
+      "usage_count": 120,
+      "per_user_limit": 2,
+      "start_date": "2025-01-01T00:00:00Z",
+      "end_date": "2025-06-30T23:59:59Z",
+      "is_active": true,
+      "created_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "coupon003",
+      "name": "선착순 100명 한정 쿠폰",
+      "code": "LIMITED100",
+      "discount_type": "PERCENTAGE",
+      "discount_value": 20.00,
+      "max_discount_amount": 100000.00,
+      "min_order_amount": 100000.00,
+      "total_quantity": 100,
+      "issued_quantity": 85,
+      "usage_count": 45,
+      "per_user_limit": 1,
+      "start_date": "2025-01-01T00:00:00Z",
+      "end_date": "2025-03-31T23:59:59Z",
+      "is_active": true,
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  ],
+  "user_coupons": [
+    {
+      "id": "uc001",
+      "coupon_id": "coupon001",
+      "user_id": "user001",
+      "status": "USED",
+      "used_at": "2025-01-15T10:00:00Z",
+      "expires_at": "2025-12-31T23:59:59Z",
+      "issued_at": "2025-01-05T10:00:00Z"
+    },
+    {
+      "id": "uc002",
+      "coupon_id": "coupon002",
+      "user_id": "user001",
+      "status": "AVAILABLE",
+      "used_at": null,
+      "expires_at": "2025-06-30T23:59:59Z",
+      "issued_at": "2025-01-06T11:00:00Z"
+    },
+    {
+      "id": "uc003",
+      "coupon_id": "coupon003",
+      "user_id": "user002",
+      "status": "AVAILABLE",
+      "used_at": null,
+      "expires_at": "2025-03-31T23:59:59Z",
+      "issued_at": "2025-01-07T09:30:00Z"
+    }
+  ],
+  "coupon_queues": [
+    {
+      "id": "cq001",
+      "coupon_id": "coupon003",
+      "user_id": "user001",
+      "position": 1,
+      "status": "ISSUED",
+      "session_id": "session123",
+      "last_heartbeat": "2025-01-20T10:00:00Z",
+      "entered_at": "2025-01-20T09:55:00Z",
+      "processing_started_at": "2025-01-20T09:59:00Z",
+      "completed_at": "2025-01-20T10:00:00Z"
+    },
+    {
+      "id": "cq002",
+      "coupon_id": "coupon003",
+      "user_id": "user002",
+      "position": 5,
+      "status": "WAITING",
+      "session_id": "session456",
+      "last_heartbeat": "2025-01-20T10:01:00Z",
+      "entered_at": "2025-01-20T10:00:00Z",
+      "processing_started_at": null,
+      "completed_at": null
+    }
+  ],
+  "queue_events": [
+    {
+      "id": "qe001",
+      "coupon_id": "coupon003",
+      "event_type": "USER_JOINED",
+      "user_id": "user001",
+      "position_change": 1,
+      "metadata": "{\"session_id\": \"session123\"}",
+      "created_at": "2025-01-20T09:55:00Z"
+    },
+    {
+      "id": "qe002",
+      "coupon_id": "coupon003",
+      "event_type": "COUPON_ISSUED",
+      "user_id": "user001",
+      "position_change": 0,
+      "metadata": "{\"coupon_issued_id\": \"uc001\"}",
+      "created_at": "2025-01-20T10:00:00Z"
+    }
+  ],
+  "points": [
+    {
+      "id": "point001",
+      "user_id": "user001",
+      "amount": 10000.00,
+      "point_type": "EARNED",
+      "description": "회원 가입 축하",
+      "order_id": null,
+      "expires_at": "2026-01-01T23:59:59Z",
+      "created_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "point002",
+      "user_id": "user001",
+      "amount": 50000.00,
+      "point_type": "EARNED",
+      "description": "포인트 충전",
+      "order_id": null,
+      "expires_at": "2025-12-31T23:59:59Z",
+      "created_at": "2025-01-05T10:00:00Z"
+    },
+    {
+      "id": "point003",
+      "user_id": "user001",
+      "amount": -5000.00,
+      "point_type": "USED",
+      "description": "주문 시 사용",
+      "order_id": "order001",
+      "expires_at": null,
+      "created_at": "2025-01-15T10:00:00Z"
+    }
+  ],
+  "reviews": [
+    {
+      "id": "review001",
+      "user_id": "user001",
+      "product_id": "prod002",
+      "order_item_id": "item001",
+      "rating": 5.0,
+      "content": "정말 좋은 상품입니다! 배송도 빠르고 제품도 만족스럽습니다.",
+      "image_urls": "[\"https://example.com/reviews/r1_1.jpg\", \"https://example.com/reviews/r1_2.jpg\"]",
+      "is_visible": true,
+      "created_at": "2025-01-19T10:00:00Z",
+      "updated_at": "2025-01-19T10:00:00Z"
+    },
+    {
+      "id": "review002",
+      "user_id": "user001",
+      "product_id": "prod003",
+      "order_item_id": "item002",
+      "rating": 4.5,
+      "content": "가성비가 좋은 제품입니다. 추천합니다.",
+      "image_urls": null,
+      "is_visible": true,
+      "created_at": "2025-01-19T11:00:00Z",
+      "updated_at": "2025-01-19T11:00:00Z"
+    }
+  ],
+  "review_comments": [
+    {
+      "id": "rc001",
+      "user_id": "user002",
+      "review_id": "review001",
+      "parent_comment_id": null,
+      "content": "저도 같은 제품 주문했는데 기대됩니다!",
+      "is_seller": false,
+      "is_visible": true,
+      "created_at": "2025-01-20T09:00:00Z",
+      "updated_at": "2025-01-20T09:00:00Z"
+    }
+  ],
+  "shipping_policies": [
+    {
+      "id": "sp001",
+      "name": "기본 배송정책",
+      "default_shipping_fee": 3000.00,
+      "free_shipping_threshold": 50000.00,
+      "region_type": "STANDARD",
+      "additional_fee": 0.00,
+      "is_active": true,
+      "priority": 1,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "sp002",
+      "name": "제주 배송정책",
+      "default_shipping_fee": 3000.00,
+      "free_shipping_threshold": 100000.00,
+      "region_type": "JEJU",
+      "additional_fee": 5000.00,
+      "is_active": true,
+      "priority": 2,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "sp003",
+      "name": "도서산간 배송정책",
+      "default_shipping_fee": 3000.00,
+      "free_shipping_threshold": 100000.00,
+      "region_type": "REMOTE",
+      "additional_fee": 8000.00,
+      "is_active": true,
+      "priority": 3,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    }
+  ],
+  "outbox_events": [
+    {
+      "id": "event001",
+      "aggregate_type": "ORDER",
+      "aggregate_id": "order001",
+      "event_type": "ORDER_CREATED",
+      "payload": "{\"order_id\": \"order001\", \"user_id\": \"user001\", \"total_amount\": 165000.00}",
+      "status": "PUBLISHED",
+      "retry_count": 0,
+      "max_retry": 3,
+      "destination": "order-events",
+      "partition_key": "user001",
+      "error_message": null,
+      "created_at": "2025-01-15T10:00:00Z",
+      "scheduled_at": null,
+      "published_at": "2025-01-15T10:00:05Z",
+      "failed_at": null,
+      "next_retry_at": null
+    },
+    {
+      "id": "event002",
+      "aggregate_type": "PAYMENT",
+      "aggregate_id": "pay001",
+      "event_type": "PAYMENT_COMPLETED",
+      "payload": "{\"payment_id\": \"pay001\", \"order_id\": \"order001\", \"amount\": 146500.00}",
+      "status": "PUBLISHED",
+      "retry_count": 0,
+      "max_retry": 3,
+      "destination": "payment-events",
+      "partition_key": "order001",
+      "error_message": null,
+      "created_at": "2025-01-15T10:05:30Z",
+      "scheduled_at": null,
+      "published_at": "2025-01-15T10:05:35Z",
+      "failed_at": null,
+      "next_retry_at": null
+    }
+  ]
+}
+```
+
+### API 엔드포인트 예시
+
+#### 사용자 관련
+- `GET /users` - 모든 사용자 조회
+- `GET /users/{id}` - 특정 사용자 조회
+- `GET /users/{id}/orders` - 사용자별 주문 목록
+
+#### 상품 관련
+- `GET /products` - 모든 상품 조회
+- `GET /products/{id}` - 특정 상품 조회
+- `GET /products?category_id={categoryId}` - 카테고리별 상품 조회
+- `GET /products?_sort=sold_count&_order=desc` - 판매량순 정렬
+- `GET /products?_sort=wishlist_count&_order=desc` - 찜순 정렬
+
+#### 주문 관련
+- `GET /orders` - 모든 주문 조회
+- `GET /orders/{id}` - 특정 주문 조회
+- `GET /orders?user_id={userId}` - 사용자별 주문 조회
+- `POST /orders` - 주문 생성
+
+#### 장바구니 관련
+- `GET /carts?user_id={userId}` - 사용자 장바구니 조회
+- `POST /carts` - 장바구니 추가
+- `PUT /carts/{id}` - 장바구니 수정
+- `DELETE /carts/{id}` - 장바구니 삭제
+
+#### 쿠폰 관련
+- `GET /coupons` - 모든 쿠폰 조회
+- `GET /coupons?is_active=true` - 활성 쿠폰 조회
+- `GET /user_coupons?user_id={userId}` - 사용자별 쿠폰 조회
+- `GET /coupon_queues?coupon_id={couponId}` - 쿠폰 대기열 조회
+
+#### 리뷰 관련
+- `GET /reviews?product_id={productId}` - 상품별 리뷰 조회
+- `GET /reviews/{id}/review_comments` - 리뷰 댓글 조회
+- `POST /reviews` - 리뷰 작성
